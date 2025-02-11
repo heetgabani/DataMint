@@ -29,6 +29,10 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 } // Limit file size to 10MB
 });
 
+app.get("/", (req, res) => {
+    res.send("🚀 CSV to API Backend is Running!");
+});
+
 // ✅ Upload & Process CSV
 app.post("/upload", upload.single("file"), (req, res) => {
     if (!req.file) {
@@ -87,6 +91,9 @@ app.get("/api/:filename", (req, res) => {
         }
     });
 });
+
+
+
 
 // ✅ Start Server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
