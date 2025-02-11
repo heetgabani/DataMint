@@ -1,13 +1,17 @@
 "use client";
 
 import React, { useState } from "react";
-// import Papa from "papaparse";
+
+// Define type for each row in the table
+type TableRow = {
+  [key: string]: string;
+};
 
 const CSVUploader = () => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [apiEndpoint, setApiEndpoint] = useState<string | null>(null);
-  const [tableData, setTableData] = useState<any[]>([]);
+  const [tableData, setTableData] = useState<TableRow[]>([]);
 
   // Handle file selection
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -33,7 +37,7 @@ const CSVUploader = () => {
       const result = await response.json();
       setUploading(false);
       setApiEndpoint(result.apiEndpoint);
-      setTableData(result.data);
+      setTableData(result.data); // Now this will have correct types
     } catch (error) {
       console.error("Upload failed", error);
       setUploading(false);
