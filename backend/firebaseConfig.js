@@ -1,5 +1,5 @@
 const firebaseAdmin = require('firebase-admin');
-const serviceAccount = require('./datamint-a6d58-firebase-adminsdk-fbsvc-84312a2d11.json');  // Path to the JSON key file
+const serviceAccount = require('./config/datamint-a6d58-firebase-adminsdk-fbsvc-84312a2d11.json');  // Path to the JSON key file
 
 // Initialize Firebase Admin SDK
 firebaseAdmin.initializeApp({
