@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import Papa from "papaparse";
+// import Papa from "papaparse";
 
 const CSVUploader = () => {
   const [file, setFile] = useState<File | null>(null);
