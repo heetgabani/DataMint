@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import Papa from "papaparse";
 
-// Define type for each row in the table
+// ✅ Define type for table rows
 type TableRow = {
   [key: string]: string;
 };
@@ -13,14 +14,14 @@ const CSVUploader = () => {
   const [apiEndpoint, setApiEndpoint] = useState<string | null>(null);
   const [tableData, setTableData] = useState<TableRow[]>([]);
 
-  // Handle file selection
+  // ✅ Handle file selection
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
       setFile(event.target.files[0]);
     }
   };
 
-  // Upload file to backend
+  // ✅ Upload file to backend
   const handleUpload = async () => {
     if (!file) return alert("Please select a CSV file");
 
@@ -29,15 +30,27 @@ const CSVUploader = () => {
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:5001/upload", {
+      const response = await fetch("https://datamint.onrender.com/upload", {
         method: "POST",
         body: formData,
       });
 
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+
       const result = await response.json();
       setUploading(false);
       setApiEndpoint(result.apiEndpoint);
-      setTableData(result.data); // Now this will have correct types
+
+      // ✅ Parse CSV using PapaParse
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (parsedData) => {
+          setTableData(parsedData.data as TableRow[]);
+        },
+      });
     } catch (error) {
       console.error("Upload failed", error);
       setUploading(false);
@@ -48,7 +61,7 @@ const CSVUploader = () => {
     <div className="p-4 bg-white shadow-md rounded-md">
       <h2 className="text-xl font-bold mb-4">Upload CSV File</h2>
 
-      {/* File Input */}
+      {/* ✅ File Input */}
       <input
         type="file"
         accept=".csv"
@@ -56,7 +69,7 @@ const CSVUploader = () => {
         className="border p-2 mb-4"
       />
 
-      {/* Upload Button */}
+      {/* ✅ Upload Button */}
       <button
         onClick={handleUpload}
         disabled={uploading}
@@ -65,21 +78,21 @@ const CSVUploader = () => {
         {uploading ? "Uploading..." : "Upload CSV"}
       </button>
 
-      {/* Show API Endpoint */}
+      {/* ✅ Show API Endpoint */}
       {apiEndpoint && (
         <p className="mt-4">
           🎉 API Generated:{" "}
           <a
-            href={`http://localhost:5001${apiEndpoint}`}
+            href={`https://datamint.onrender.com${apiEndpoint}`}
             target="_blank"
             className="text-blue-500"
           >
-            {`http://localhost:5001${apiEndpoint}`}
+            {`https://datamint.onrender.com${apiEndpoint}`}
           </a>
         </p>
       )}
 
-      {/* Show CSV Data in Table */}
+      {/* ✅ Show CSV Data in Table */}
       {tableData.length > 0 && (
         <table className="w-full mt-4 border">
           <thead>

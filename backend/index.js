@@ -8,14 +8,15 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 5001;
 
+// ✅ CORS Configuration for Production
 app.use(cors({
-    origin: "https://data-mint.vercel.app/",
+    origin: "https://data-mint.vercel.app", // Allow frontend requests
     methods: ["GET", "POST"],
     credentials: true
 }));
 app.use(express.json());
 
-// Configure multer for file upload
+// ✅ Configure Multer (File Upload with Size Limit)
 const storage = multer.diskStorage({
     destination: "uploads/",
     filename: (req, file, cb) => {
@@ -23,27 +24,31 @@ const storage = multer.diskStorage({
         cb(null, newFilename);
     },
 });
-const upload = multer({ storage });
+const upload = multer({
+    storage,
+    limits: { fileSize: 10 * 1024 * 1024 } // Limit file size to 10MB
+});
 
-// Endpoint to upload and process CSV
+// ✅ Upload & Process CSV
 app.post("/upload", upload.single("file"), (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const results = [];
     const filePath = path.join(__dirname, "uploads", req.file.filename);
+    const results = [];
 
-    // Read file and use PapaParse to parse CSV
+    // ✅ Read file and parse CSV using PapaParse
     const fileStream = fs.createReadStream(filePath);
     Papa.parse(fileStream, {
-        header: true, // Use the first row as headers
-        skipEmptyLines: true, // Skip empty lines
+        header: true, // Use first row as headers
+        skipEmptyLines: true, // Ignore empty lines
         complete: (parsedData) => {
-            // Store parsed data
             results.push(...parsedData.data);
-            // Delete the uploaded file after processing
+
+            // ✅ Delete file after processing to save space
             fs.unlinkSync(filePath);
+
             res.json({
                 message: "File uploaded successfully",
                 data: results,
@@ -57,7 +62,7 @@ app.post("/upload", upload.single("file"), (req, res) => {
     });
 });
 
-// Dynamic API Generator from CSV
+// ✅ Dynamic API Generator from CSV
 app.get("/api/:filename", (req, res) => {
     const filePath = path.join(__dirname, "uploads", req.params.filename);
 
@@ -68,10 +73,10 @@ app.get("/api/:filename", (req, res) => {
     const results = [];
     const fileStream = fs.createReadStream(filePath);
 
-    // Parse the CSV file using PapaParse
+    // ✅ Parse CSV using PapaParse
     Papa.parse(fileStream, {
-        header: true, // Use the first row as headers
-        skipEmptyLines: true, // Skip empty lines
+        header: true,
+        skipEmptyLines: true,
         complete: (parsedData) => {
             results.push(...parsedData.data);
             res.json(results);
@@ -83,4 +88,5 @@ app.get("/api/:filename", (req, res) => {
     });
 });
 
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+// ✅ Start Server
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
