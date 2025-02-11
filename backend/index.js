@@ -9,7 +9,7 @@ const app = express();
 const PORT = process.env.PORT || 5001;
 
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: "https://data-mint.vercel.app/",
     methods: ["GET", "POST"],
     credentials: true
 }));
