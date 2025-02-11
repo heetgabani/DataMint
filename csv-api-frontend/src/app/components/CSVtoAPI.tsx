@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Papa from "papaparse"; // Import PapaParse
 
 // Define type for each row in the table
 type TableRow = {
@@ -37,7 +38,16 @@ const CSVUploader = () => {
       const result = await response.json();
       setUploading(false);
       setApiEndpoint(result.apiEndpoint);
-      setTableData(result.data); // Now this will have correct types
+
+      // Parse the CSV data using PapaParse
+      Papa.parse(file, {
+        complete: (parsedData) => {
+          // This will give you the parsed CSV as an array of objects
+          setTableData(parsedData.data as TableRow[]);
+        },
+        header: true, // Treat the first row as headers
+        skipEmptyLines: true, // Skip empty lines in CSV
+      });
     } catch (error) {
       console.error("Upload failed", error);
       setUploading(false);
