@@ -1,6 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const csvParser = require("csv-parser");
+const Papa = require("papaparse"); // Import PapaParse
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
@@ -14,8 +14,6 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
-
-
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -36,16 +34,27 @@ app.post("/upload", upload.single("file"), (req, res) => {
     const results = [];
     const filePath = path.join(__dirname, "uploads", req.file.filename);
 
-    fs.createReadStream(filePath)
-        .pipe(csvParser())
-        .on("data", (data) => results.push(data))
-        .on("end", () => {
+    // Read file and use PapaParse to parse CSV
+    const fileStream = fs.createReadStream(filePath);
+    Papa.parse(fileStream, {
+        header: true, // Use the first row as headers
+        skipEmptyLines: true, // Skip empty lines
+        complete: (parsedData) => {
+            // Store parsed data
+            results.push(...parsedData.data);
+            // Delete the uploaded file after processing
+            fs.unlinkSync(filePath);
             res.json({
                 message: "File uploaded successfully",
                 data: results,
                 apiEndpoint: `/api/${req.file.filename}`,
             });
-        });
+        },
+        error: (err) => {
+            console.error("Error parsing CSV file:", err);
+            res.status(500).json({ error: "Error parsing CSV file" });
+        }
+    });
 });
 
 // Dynamic API Generator from CSV
@@ -57,12 +66,21 @@ app.get("/api/:filename", (req, res) => {
     }
 
     const results = [];
-    fs.createReadStream(filePath)
-        .pipe(csvParser())
-        .on("data", (data) => results.push(data))
-        .on("end", () => {
+    const fileStream = fs.createReadStream(filePath);
+
+    // Parse the CSV file using PapaParse
+    Papa.parse(fileStream, {
+        header: true, // Use the first row as headers
+        skipEmptyLines: true, // Skip empty lines
+        complete: (parsedData) => {
+            results.push(...parsedData.data);
             res.json(results);
-        });
+        },
+        error: (err) => {
+            console.error("Error parsing CSV file:", err);
+            res.status(500).json({ error: "Error parsing CSV file" });
+        }
+    });
 });
 
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
