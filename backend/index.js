@@ -1,9 +1,10 @@
 const express = require("express");
 const multer = require("multer");
-const Papa = require("papaparse"); // Import PapaParse
+const firebaseAdmin = require("firebase-admin");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+const { bucket } = require('./firebaseConfig'); // Import the bucket
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -14,86 +15,68 @@ app.use(cors({
     methods: ["GET", "POST"],
     credentials: true
 }));
+
 app.use(express.json());
 
-// ✅ Configure Multer (File Upload with Size Limit)
-const storage = multer.diskStorage({
-    destination: "uploads/",
-    filename: (req, file, cb) => {
-        const newFilename = `${Date.now()}-${file.originalname}`;
-        cb(null, newFilename);
-    },
-});
-const upload = multer({
-    storage,
-    limits: { fileSize: 10 * 1024 * 1024 } // Limit file size to 10MB
-});
-
 app.get("/", (req, res) => {
-    res.send("🚀 CSV to API Backend is Running!");
+    res.send("🚀 Firebase Storage for CSV Files is Running!");
 });
 
-// ✅ Upload & Process CSV
-app.post("/upload", upload.single("file"), (req, res) => {
+// ✅ Multer Configuration (for File Upload)
+const upload = multer({ storage: multer.memoryStorage() }); // Store file in memory
+
+app.post("/upload", upload.single("file"), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
     }
 
-    const filePath = path.join(__dirname, "uploads", req.file.filename);
-    const results = [];
+    const fileName = `${Date.now()}-${req.file.originalname}`;
 
-    // ✅ Read file and parse CSV using PapaParse
-    const fileStream = fs.createReadStream(filePath);
-    Papa.parse(fileStream, {
-        header: true, // Use first row as headers
-        skipEmptyLines: true, // Ignore empty lines
-        complete: (parsedData) => {
-            results.push(...parsedData.data);
+    try {
+        // Upload file to Firebase Storage
+        await bucket.upload(req.file.buffer, {
+            destination: fileName, // The file will be stored in Firebase with the unique file name
+            public: true, // Make the file public for access
+        });
 
-            // ✅ Delete file after processing to save space
-            fs.unlinkSync(filePath);
+        // Respond with the file URL
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
 
-            res.json({
-                message: "File uploaded successfully",
-                data: results,
-                apiEndpoint: `/api/${req.file.filename}`,
-            });
-        },
-        error: (err) => {
-            console.error("Error parsing CSV file:", err);
-            res.status(500).json({ error: "Error parsing CSV file" });
-        }
-    });
-});
-
-// ✅ Dynamic API Generator from CSV
-app.get("/api/:filename", (req, res) => {
-    const filePath = path.join(__dirname, "uploads", req.params.filename);
-
-    if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ error: "File not found" });
+        res.json({
+            message: "File uploaded successfully",
+            apiEndpoint: `/api/${fileName}`,
+            fileUrl: publicUrl, // Return file URL after upload
+        });
+    } catch (error) {
+        console.error("Error uploading file:", error);
+        res.status(500).json({ error: "Failed to upload file" });
     }
-
-    const results = [];
-    const fileStream = fs.createReadStream(filePath);
-
-    // ✅ Parse CSV using PapaParse
-    Papa.parse(fileStream, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (parsedData) => {
-            results.push(...parsedData.data);
-            res.json(results);
-        },
-        error: (err) => {
-            console.error("Error parsing CSV file:", err);
-            res.status(500).json({ error: "Error parsing CSV file" });
-        }
-    });
 });
 
+// ✅ Fetch CSV File Data (from Firebase Storage)
+app.get("/api/:filename", async (req, res) => {
+    const fileName = req.params.filename;
 
+    try {
+        const file = bucket.file(fileName);
+        const [exists] = await file.exists();
 
+        if (!exists) {
+            return res.status(404).json({ error: "File not found" });
+        }
+
+        // Get a signed URL to download the file
+        const [url] = await file.getSignedUrl({
+            action: 'read',
+            expires: '03-09-2491', // URL expiration date (very far future)
+        });
+
+        res.json({ downloadURL: url });
+    } catch (error) {
+        console.error("Error fetching file:", error);
+        res.status(500).json({ error: "Error fetching file from Firebase" });
+    }
+});
 
 // ✅ Start Server
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
